@@ -15,7 +15,7 @@ export const FLAG_INFO: Record<FlagKey, { label: string; plan: string; note: str
   backButton: {
     label: 'Visible back button',
     plan: 'Just do it',
-    note: 'Replaces the hidden swipe-down to edit earlier answers.',
+    note: 'Makes going back visible. The answers list above each question stays as it is today.',
   },
   whyCopy: {
     label: 'Say why we ask',
@@ -25,7 +25,7 @@ export const FLAG_INFO: Record<FlagKey, { label: string; plan: string; note: str
   contactRework: {
     label: 'Contact step rework',
     plan: 'Test 2',
-    note: 'Full name, what happens next, contact preference, a button that names the reward, reassurance matched to the owner.',
+    note: 'What happens next, shown before the fields; one full-name field; a plain button.',
   },
   estimateScreen: {
     label: 'ZIP first + earnings estimate',

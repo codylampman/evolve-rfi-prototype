@@ -23,7 +23,7 @@ I walked the live flow on my phone (single property, multiple properties, and th
 
 **First, a bug.** Tapping a past answer to edit it makes the screen flash to loading placeholders, the progress bar jumps backward, and the page scrolls on its own for a few seconds. I saw it every time on iPhone (Arc). It may be browser-specific, but it lands right before the contact step, so it's the first thing I'd check in session data.
 
-**Contact step (35% drop-off).** The flow builds toward an answer and never gives one. An early step promises owners can earn up to 18% more, owners answer seven questions, the headline says "let's see if we're a fit," and then the reward is a request for their phone number and consent to calls and texts. Nothing says why the phone is needed or what happens next. By this point the flow knows exactly who the owner is (first-time host, self-manager, switching from another manager), then shows everyone the same generic ask.
+**Contact step (35% drop-off).** The flow builds toward an answer and never gives one. An early step promises owners can earn up to 18% more, owners answer seven questions, the headline says "let's see if we're a fit," and then the reward is a request for their phone number and consent to calls and texts. Nothing says why the phone is needed or what happens next.
 
 **Address step (30% drop-off).** It comes early, before any trust is built, and doesn't say why it's needed. Autocomplete already exists, so this is a trust problem more than a typing problem. The field accepts a ZIP, but most people will read it as asking for their home address.
 
@@ -37,7 +37,7 @@ What's already working, and kept: every step carries a reason to trust Evolve, t
 |---|---|---|
 | `backButton` | Visible back button instead of the hidden swipe-down; progress never jumps backward | Just do it |
 | `whyCopy` | Say why we ask, using Evolve's own reasons, on the address and contact fields | Test 1 |
-| `contactRework` | One full-name field, a plain "what happens next," contact preference (call, text, email), a button that names the reward, reassurance matched to the owner | Test 2 |
+| `contactRework` | A short "what happens next" above the fields, one full-name field, and a plain button ("Connect with our team") | Test 2 |
 | `estimateScreen` | Ask for ZIP early, then show an honest earnings range before contact, and collect the street address there ("for a sharper estimate") | Test 3 |
 | `requirePhone` | Phone required (default). An open question for sales | Config |
 

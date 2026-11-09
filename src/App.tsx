@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { CONTROL, FLAG_INFO, PROPOSED, flagsFromUrl, flagsToUrl, type FlagKey, type Flags } from './flags'
-import { BANNERS, EMPTY, OWNER_COPY, ownerType, stepsFor, type Answers, type StepId } from './flow'
+import { BANNERS, EMPTY, OWNER_COPY, TITLES, answerLabel, ownerType, stepsFor, type Answers, type StepId } from './flow'
 import { estimateRange, money } from './estimate'
 import { subscribe, track, type RfiEvent } from './events'
 import QRCode from 'qrcode'
+import { IconAFrame, IconCalendar, IconCheck, IconDoor, IconHomes, IconHouse, IconPencil, IconPin, IconTent } from './icons'
+import logoUrl from './assets/evolve-logo.png'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const phoneDigits = (p: string) => p.replace(/\D/g, '')
@@ -16,11 +18,55 @@ export default function App() {
   const steps = useMemo(() => stepsFor(answers, flags), [answers, flags])
 
   const phoneRef = useRef<HTMLDivElement>(null)
+  const [sheet, setSheet] = useState<null | 'flags'>(null)
+  const stickyRef = useRef<HTMLDivElement>(null)
+  const currentRef = useRef<HTMLDivElement>(null)
+  const stackRef = useRef<HTMLDivElement>(null)
+  // Like today's flow: earlier answers sit above the current question,
+  // out of view until the owner scrolls up or picks "Edit answers".
+  const scrollTo = (el: HTMLElement | null) => {
+    if (!el) return
+    const st = stickyRef.current
+    // Measure the visible pinned area, including the photo's overlap.
+    const pinned = st ? Math.max(st.getBoundingClientRect().height, st.scrollHeight) : 0
+    el.style.scrollMarginTop = `${pinned + 4}px`
+    el.scrollIntoView({ block: 'start' })
+  }
+  // Log the starting version once, the way a live test logs each owner's assignment.
+  const assigned = useRef(false)
+  useEffect(() => {
+    if (assigned.current) return
+    assigned.current = true
+    for (const k of Object.keys(flags) as FlagKey[]) track('flag_set', k, flags[k] ? 'on' : 'off')
+  }, [flags])
+  // Only add as much space below the content as it takes to bring the
+  // current question to the top (usually none on the longer final screens).
+  // Measured and scrolled in one step, before the screen paints.
+  const spacerRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const phone = phoneRef.current
+    const spacerEl = spacerRef.current
+    if (!phone || !spacerEl) return
+    const inFrame = getComputedStyle(phone).overflowY === 'auto'
+    const viewH = inFrame ? phone.clientHeight : window.innerHeight
+    const sticky = stickyRef.current ? Math.max(stickyRef.current.getBoundingClientRect().height, stickyRef.current.scrollHeight) : 0
+    const below = currentRef.current?.offsetHeight ?? 0
+    if (history.length < 2) {
+      spacerEl.style.height = '0px'
+      phone.scrollTo(0, 0)
+      window.scrollTo(0, 0)
+      return
+    }
+    spacerEl.style.height = `${Math.max(0, viewH - sticky - below)}px`
+    scrollTo(currentRef.current)
+    // Settle once more after fonts and images finish laying out.
+    const id = requestAnimationFrame(() => scrollTo(currentRef.current))
+    return () => cancelAnimationFrame(id)
+  }, [current, history.length])
   useEffect(() => {
     track('step_viewed', current)
-    window.scrollTo(0, 0)
-    phoneRef.current?.scrollTo(0, 0)
   }, [current])
+  const editAnswers = () => scrollTo(stackRef.current)
 
   const update = (patch: Partial<Answers>) => setAnswers((a) => ({ ...a, ...patch }))
 
@@ -46,10 +92,17 @@ export default function App() {
     setHistory(['intent'])
   }
 
+  // Flags apply in place. Only a step the new flags remove (the estimate
+  // screen) drops out of the history, so the owner lands on the step before it.
   const changeFlags = (f: Flags) => {
+    for (const k of Object.keys(f) as FlagKey[]) if (f[k] !== flags[k]) track('flag_set', k, f[k] ? 'on' : 'off')
     setFlags(f)
     flagsToUrl(f)
-    restart()
+    const valid = stepsFor(answers, f)
+    setHistory((h) => {
+      const kept = h.filter((id) => valid.includes(id))
+      return kept.length ? kept : ['intent']
+    })
   }
 
   // Progress only counts the main path, so it moves forward steadily.
@@ -59,32 +112,70 @@ export default function App() {
 
   const banner = BANNERS[current]
   const canGoBack = flags.backButton && history.length > 1 && current !== 'done'
+  const answered = history.filter((id) => id !== current && TITLES[id])
 
   return (
     <div className="page">
       <DesktopNotes />
+      <div className="device-col">
       <div className="device">
       <div className="phone" ref={phoneRef}>
+        <div className="sticky-top" ref={stickyRef}>
+        <div className="statusbar desktop-only" aria-hidden="true">
+          <span>9:41</span>
+          <span className="status-icons">
+            <i className="sig" />
+            <i className="wifi" />
+            <i className="batt" />
+          </span>
+        </div>
         <div className="progress" aria-hidden="true">
           <div className="progress-fill" style={{ width: `${Math.max(progress, 0.04) * 100}%` }} />
         </div>
         <header className="topbar">
-          {canGoBack ? (
-            <button className="back" onClick={back} aria-label="Back">
-              <span aria-hidden="true">‹</span> Back
-            </button>
-          ) : (
-            <span className="wordmark">evolve</span>
-          )}
-          {canGoBack && <span className="wordmark small desktop-only">evolve</span>}
-          <FlagsPanel flags={flags} onChange={changeFlags} />
+          <img className="logo" src={logoUrl} alt="Evolve" width={130} height={27} />
+          <Menu
+            canEdit={answered.length > 0}
+            onEdit={editAnswers}
+            onRestart={restart}
+            onFlags={() => setSheet('flags')}
+          />
         </header>
         {banner && (
           <div className={`banner tone-${banner.tone}`}>
             <span className="chip">{banner.text}</span>
           </div>
         )}
+        </div>
         <main className="card">
+          {answered.length > 0 && (
+            <div className="answered" ref={stackRef} aria-label="Your answers">
+              {answered.map((id) => (
+                <div className="answered-item" key={id}>
+                  <div>
+                    <span className="answer-q">{id === 'location' && flags.estimateScreen ? 'ZIP code' : TITLES[id]}</span>
+                    <span className="answer-a">{answerLabel(id, answers)}</span>
+                  </div>
+                  <button
+                    className="edit"
+                    aria-label={`Edit: ${TITLES[id]}`}
+                    onClick={() => {
+                      track('step_edit', id)
+                      setHistory((h) => h.slice(0, h.indexOf(id) + 1))
+                    }}
+                  >
+                    <IconPencil />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="current" ref={currentRef}>
+          {canGoBack && (
+            <button className="back-link" onClick={back}>
+              <span aria-hidden="true">‹</span> Back
+            </button>
+          )}
           <Step
             id={current}
             a={answers}
@@ -93,13 +184,23 @@ export default function App() {
             next={next}
             restart={restart}
             back={back}
+            editAnswers={editAnswers}
           />
+          </div>
         </main>
-        <footer className="footnote">Prototype for an Evolve case study by Cody Lampman. Estimates are demo numbers.</footer>
+        <div aria-hidden="true" ref={spacerRef} />
       </div>
+        {sheet === 'flags' && (
+          <Sheet title="Feature flags" onClose={() => setSheet(null)}>
+            <FlagsBody bare flags={flags} onChange={(f) => { changeFlags(f); setSheet(null) }} onReset={() => { restart(); setSheet(null) }} />
+            <p className="small sheet-foot">Prototype for an Evolve case study by Cody Lampman. Estimates are demo numbers.</p>
+          </Sheet>
+        )}
+      </div>
+      <p className="footnote desktop-only">Prototype for an Evolve case study by Cody Lampman. Estimates are demo numbers.</p>
       </div>
       <aside className="side side-flags" aria-label="Feature flags">
-        <FlagsBody flags={flags} onChange={changeFlags} />
+        <FlagsBody flags={flags} onChange={changeFlags} onReset={restart} />
       </aside>
     </div>
   )
@@ -124,7 +225,7 @@ function DesktopNotes() {
       {qr && (
         <div className="qr">
           <img src={qr} alt="QR code to open this prototype on your phone" width={120} height={120} />
-          <span>Best on your phone. Scan to open it there.</span>
+          <span>Best on your phone. Scan to open it.</span>
         </div>
       )}
       <h3>How to use it</h3>
@@ -149,18 +250,19 @@ type StepProps = {
   next: (from: StepId, patch?: Partial<Answers>) => void
   restart: () => void
   back: () => void
+  editAnswers: () => void
 }
 
-function Step({ id, a, flags, update, next, restart, back }: StepProps) {
+function Step({ id, a, flags, update, next, restart, back, editAnswers }: StepProps) {
   switch (id) {
     case 'intent':
       return (
         <Question title="How would you like to get started with Evolve?">
           <Choices
             options={[
-              ['single', 'Looking to rent out my property'],
-              ['multiple', 'Looking to rent multiple properties'],
-              ['buy', 'Looking to buy a property'],
+              ['single', 'Looking to rent out my property', undefined, <IconHouse />],
+              ['multiple', 'Looking to rent multiple properties', undefined, <IconHomes />],
+              ['buy', 'Looking to buy a property', undefined, <IconAFrame />],
             ]}
             value={a.intent}
             onPick={(v) => next('intent', { intent: v as Answers['intent'] })}
@@ -172,8 +274,9 @@ function Step({ id, a, flags, update, next, restart, back }: StepProps) {
       return (
         <Question title="This prototype covers the single-property path">
           <p className="body">
-            The multiple-property and buying paths are unchanged here. They share the same contact step, so the
-            contact changes would carry over to them.
+            This prototype focuses on owners renting out one property, the path the brief is about. The multiple-property
+            and buying paths are unchanged. They end at the same contact step, so the contact changes would apply to them
+            too.
           </p>
           <button className="primary" onClick={back}>
             Go back
@@ -186,10 +289,10 @@ function Step({ id, a, flags, update, next, restart, back }: StepProps) {
         <Question title="Which of these best describes your property?">
           <Choices
             options={[
-              ['home', 'A whole home or condo', 'house, cabin, townhouse, studio, tiny home, etc.'],
-              ['room', 'A private room'],
-              ['timeshare', 'A timeshare'],
-              ['other', 'Something else', 'tent, houseboat, or movable camper'],
+              ['home', 'A whole home or condo', 'house, cabin, townhouse, studio, tiny home, etc.', <IconHouse />],
+              ['room', 'A private room', undefined, <IconDoor />],
+              ['timeshare', 'A timeshare', undefined, <IconCalendar />],
+              ['other', 'Something else', 'tent, houseboat, or movable camper', <IconTent />],
             ]}
             value={a.propertyType}
             onPick={(v) => next('propertyType', { propertyType: v as Answers['propertyType'] })}
@@ -199,7 +302,7 @@ function Step({ id, a, flags, update, next, restart, back }: StepProps) {
 
     case 'bedrooms':
       return (
-        <Question title="How many bedrooms does your property have?" note="Over 30,000 owners trust Evolve to rent out homes like yours.">
+        <Question title="How many bedrooms does your property have?" note={<><strong>Over 30,000 owners trust Evolve</strong> to rent out homes like yours.</>}>
           <div className="stepper">
             <button aria-label="Fewer bedrooms" onClick={() => update({ bedrooms: Math.max(1, a.bedrooms - 1) })}>
               −
@@ -220,7 +323,7 @@ function Step({ id, a, flags, update, next, restart, back }: StepProps) {
 
     case 'renting':
       return (
-        <Question title="Are you currently renting it out as a vacation rental?">
+        <Question title="Are you currently renting it out as a vacation rental?" note={<strong>Good news: we already host guests near you.</strong>}>
           <Choices
             options={[
               ['yes', 'Yes'],
@@ -250,7 +353,7 @@ function Step({ id, a, flags, update, next, restart, back }: StepProps) {
       return (
         <Question
           title="Will you be renting out your property furnished or unfurnished?"
-          note="Over half of our new owners are first-time hosts, and we guide each one through every step."
+          note={<><strong>{OWNER_COPY[ownerType(a)].title}</strong> {OWNER_COPY[ownerType(a)].body}</>}
         >
           <Choices
             options={[
@@ -295,7 +398,7 @@ function Step({ id, a, flags, update, next, restart, back }: StepProps) {
       )
 
     case 'estimate':
-      return <EstimateStep a={a} flags={flags} next={next} />
+      return <EstimateStep a={a} flags={flags} next={next} editAnswers={editAnswers} />
 
     case 'contact':
       return flags.contactRework ? (
@@ -323,14 +426,7 @@ function Step({ id, a, flags, update, next, restart, back }: StepProps) {
       const first = (a.fullName.trim().split(/\s+/)[0] || a.firstName || '').trim()
       return (
         <Question title={`You're all set${first ? `, ${first}` : ''}.`}>
-          <ol className="next-steps">
-            <li>We review your home and the market around it.</li>
-            <li>
-              A local expert reaches out by {a.contactPref ?? 'phone'} to walk you through your
-              {flags.estimateScreen ? ' full' : ''} estimate.
-            </li>
-            <li>You decide. There's no long-term contract.</li>
-          </ol>
+          <p className="body">Thanks for telling us about your home. Someone from our team will follow up soon.</p>
           <button className="secondary" onClick={restart}>
             Start over
           </button>
@@ -354,19 +450,23 @@ function LocationStep({ a, flags, next }: Pick<StepProps, 'a' | 'flags' | 'next'
     next('location', { location: value.trim() })
   }
   return (
-    <Question title={zipOnly ? 'Where is your home?' : 'Where is it located?'}>
+    <Question title={zipOnly ? 'Enter your ZIP code to see what your home could earn' : 'Where is it located?'}>
       <Field
         label={zipOnly ? 'ZIP code' : 'Address or zip code'}
         help={
           flags.whyCopy
             ? zipOnly
-              ? 'We use this to estimate what homes like yours earn nearby.'
+              ? "Just your ZIP for now. We'll ask for the full address next to sharpen your estimate."
               : 'We use your address to look up your home and estimate what it could earn.'
             : undefined
         }
         error={error}
       >
+        <span className="input-icon">
+          <IconPin />
+        </span>
         <input
+          className="with-icon"
           value={value}
           onChange={(e) => {
             setValue(e.target.value)
@@ -387,11 +487,10 @@ function LocationStep({ a, flags, next }: Pick<StepProps, 'a' | 'flags' | 'next'
   )
 }
 
-function EstimateStep({ a, flags, next }: Pick<StepProps, 'a' | 'flags' | 'next'>) {
+function EstimateStep({ a, flags, next, editAnswers }: Pick<StepProps, 'a' | 'flags' | 'next' | 'editAnswers'>) {
   const [lo, hi] = estimateRange(a.bedrooms, a.location, a.stayType)
   const [street, setStreet] = useState(a.street)
   const [error, setError] = useState('')
-  const beds = `${a.bedrooms}-bedroom ${a.propertyType === 'room' ? 'rooms' : 'homes'}`
   const submit = () => {
     if (street.trim().length < 5) {
       setError('Add your street address to continue.')
@@ -407,15 +506,15 @@ function EstimateStep({ a, flags, next }: Pick<StepProps, 'a' | 'flags' | 'next'
           {money(lo)} to {money(hi)}
         </span>
         <span className="estimate-unit">a year in rental income</span>
-        <span className="estimate-basis">
-          Based on {beds} near {a.location}
-          {a.stayType === 'monthly' ? ' with monthly stays' : ''}. Your local expert will refine it.
-        </span>
+        <span className="estimate-basis">A starting point based on similar homes near {a.location}.</span>
+        <button className="link estimate-edit" onClick={editAnswers}>
+          Edit your answers
+        </button>
       </div>
       <p className="proof">Owners with Evolve earn up to 18% more than the market average.</p>
       <Field
         label="Street address"
-        help={flags.whyCopy ? 'For a sharper estimate. We use it to look up your home, nothing else.' : undefined}
+        help={flags.whyCopy ? 'We use it to look up your home and sharpen the estimate.' : undefined}
         error={error}
       >
         <input
@@ -453,30 +552,35 @@ function ContactControl({ a, flags, next }: Pick<StepProps, 'a' | 'flags' | 'nex
   }
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value })
   return (
-    <Question title="Great! Let's see if we're a fit">
+    <Question title="Great! Let's see if we're a fit" big>
       <Field label="First name" error={errors.first}>
         <input value={f.first} onChange={set('first')} autoComplete="given-name" onFocus={() => track('field_focus', 'contact', 'first')} />
       </Field>
       <Field label="Last name" error={errors.last}>
         <input value={f.last} onChange={set('last')} autoComplete="family-name" onFocus={() => track('field_focus', 'contact', 'last')} />
       </Field>
-      <Field label="Email" error={errors.email} help={flags.whyCopy ? "We'll send next steps here." : undefined}>
+      <Field label="Email" error={errors.email}>
         <input value={f.email} onChange={set('email')} type="email" inputMode="email" autoComplete="email" onFocus={() => track('field_focus', 'contact', 'email')} />
       </Field>
       <Field
         label={flags.requirePhone ? 'Phone' : 'Phone (optional)'}
         error={errors.phone}
-        help={flags.whyCopy ? 'A local expert will reach out to walk you through your options.' : undefined}
+        help={flags.whyCopy ? 'So our team can follow up about your home.' : undefined}
       >
-        <input value={f.phone} onChange={set('phone')} type="tel" inputMode="tel" autoComplete="tel" placeholder="(XXX) XXX-XXXX" onFocus={() => track('field_focus', 'contact', 'phone')} />
+        <span className="phone-row">
+          <span className="country" aria-label="Country code: United States, plus 1">
+            +1 <span aria-hidden="true">⌄</span>
+          </span>
+          <input value={f.phone} onChange={set('phone')} type="tel" inputMode="tel" autoComplete="tel-national" placeholder="(XXX) XXX-XXXX" onFocus={() => track('field_focus', 'contact', 'phone')} />
+        </span>
       </Field>
       <button className="primary" onClick={submit}>
         Complete
       </button>
-      <div className="note">
+      <Note>
         <strong>You could be live in as little as a week.</strong> We'll handle the photos, listing, and pricing to get
         you there.
-      </div>
+      </Note>
       <p className="fine">
         By providing your contact information and clicking "Complete", you agree to be contacted by Evolve via email,
         calls, and texts. You also agree to Evolve's Terms of Use and Privacy Policy. Giving this consent is not a
@@ -488,10 +592,8 @@ function ContactControl({ a, flags, next }: Pick<StepProps, 'a' | 'flags' | 'nex
 
 function ContactReworked({ a, flags, next }: Pick<StepProps, 'a' | 'flags' | 'next'>) {
   const [f, setF] = useState({ name: a.fullName, email: a.email, phone: a.phone })
-  const [pref, setPref] = useState<Answers['contactPref']>(a.contactPref ?? 'call')
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const owner = OWNER_COPY[ownerType(a)]
-  const cta = flags.estimateScreen ? 'Get my full estimate' : 'Get my free estimate'
+  const cta = 'Connect with our team'
   const submit = () => {
     const e: Record<string, string> = {}
     if (f.name.trim().length < 2) e.name = 'Enter your name.'
@@ -499,47 +601,38 @@ function ContactReworked({ a, flags, next }: Pick<StepProps, 'a' | 'flags' | 'ne
     if (flags.requirePhone || f.phone) if (phoneDigits(f.phone).length < 10) e.phone = 'Enter a 10-digit phone number.'
     setErrors(e)
     if (Object.keys(e).length) return Object.keys(e).forEach((k) => track('field_error', 'contact', k))
-    track('rfi_submitted', 'contact', pref)
-    next('contact', { fullName: f.name, email: f.email, phone: f.phone, contactPref: pref })
+    track('rfi_submitted', 'contact')
+    next('contact', { fullName: f.name, email: f.email, phone: f.phone })
   }
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value })
   return (
-    <Question title={flags.estimateScreen ? 'Where should we send your full estimate?' : 'Get your free estimate from a local expert'}>
-      <div className="note">
-        <strong>{owner.title}</strong> {owner.body}
-      </div>
+    <Question big title="Last step: how can we reach you?">
+      <ol className="steps-inline" aria-label="What happens next">
+        <li>You share how to reach you.</li>
+        <li>Our team follows up.</li>
+        <li>You decide, with no long-term contract.</li>
+      </ol>
       <Field label="Full name" error={errors.name}>
         <input value={f.name} onChange={set('name')} autoComplete="name" onFocus={() => track('field_focus', 'contact', 'name')} />
       </Field>
-      <Field label="Email" error={errors.email} help={flags.whyCopy ? "We'll send your estimate and next steps here." : undefined}>
+      <Field label="Email" error={errors.email}>
         <input value={f.email} onChange={set('email')} type="email" inputMode="email" autoComplete="email" onFocus={() => track('field_focus', 'contact', 'email')} />
       </Field>
       <Field
         label={flags.requirePhone ? 'Phone' : 'Phone (optional)'}
         error={errors.phone}
-        help={flags.whyCopy ? 'A local expert will reach out to walk you through your estimate. No pressure.' : undefined}
+        help={flags.whyCopy ? 'So our team can follow up about your home.' : undefined}
       >
-        <input value={f.phone} onChange={set('phone')} type="tel" inputMode="tel" autoComplete="tel" placeholder="(801) 555-0123" onFocus={() => track('field_focus', 'contact', 'phone')} />
+        <span className="phone-row">
+          <span className="country" aria-label="Country code: United States, plus 1">
+            +1 <span aria-hidden="true">⌄</span>
+          </span>
+          <input value={f.phone} onChange={set('phone')} type="tel" inputMode="tel" autoComplete="tel-national" placeholder="(XXX) XXX-XXXX" onFocus={() => track('field_focus', 'contact', 'phone')} />
+        </span>
       </Field>
-      <fieldset className="prefs">
-        <legend>How should we reach you first?</legend>
-        {(['call', 'text', 'email'] as const).map((p) => (
-          <button key={p} type="button" className={`pill ${pref === p ? 'on' : ''}`} aria-pressed={pref === p} onClick={() => setPref(p)}>
-            {p === 'call' ? 'Call me' : p === 'text' ? 'Text me' : 'Email me'}
-          </button>
-        ))}
-      </fieldset>
       <button className="primary" onClick={submit}>
         {cta}
       </button>
-      <div className="what-next">
-        <span className="what-next-title">What happens next</span>
-        <ol>
-          <li>We review your home and the market around it.</li>
-          <li>A local expert walks you through your estimate.</li>
-          <li>You decide. No long-term contract.</li>
-        </ol>
-      </div>
       <p className="fine">
         By tapping "{cta}", you agree Evolve may contact you about your home by email, phone or text, and to our Terms
         and Privacy Policy. Consent isn't required to buy. Message and data rates may apply.
@@ -548,12 +641,23 @@ function ContactReworked({ a, flags, next }: Pick<StepProps, 'a' | 'flags' | 'ne
   )
 }
 
-function Question({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
-  const ref = useRef<HTMLHeadingElement>(null)
-  useEffect(() => ref.current?.focus(), [title])
+function Note({ children }: { children: React.ReactNode }) {
   return (
-    <section className="question">
-      {note && <div className="note">{note}</div>}
+    <div className="note">
+      <span className="note-icon">
+        <IconCheck />
+      </span>
+      <span>{children}</span>
+    </div>
+  )
+}
+
+function Question({ title, note, children, big }: { title: string; note?: React.ReactNode; children: React.ReactNode; big?: boolean }) {
+  const ref = useRef<HTMLHeadingElement>(null)
+  useEffect(() => ref.current?.focus({ preventScroll: true }), [title])
+  return (
+    <section className={`question ${big ? 'big' : ''}`}>
+      {note && <Note>{note}</Note>}
       <h1 tabIndex={-1} ref={ref}>
         {title}
       </h1>
@@ -562,13 +666,18 @@ function Question({ title, note, children }: { title: string; note?: string; chi
   )
 }
 
-function Choices({ options, value, onPick }: { options: [string, string, string?][]; value?: string; onPick: (v: string) => void }) {
+type Option = [string, string, string?, React.ReactNode?]
+
+function Choices({ options, value, onPick }: { options: Option[]; value?: string; onPick: (v: string) => void }) {
   return (
     <div className="choices">
-      {options.map(([v, label, sub]) => (
-        <button key={v} className={`choice ${value === v ? 'on' : ''}`} onClick={() => onPick(v)}>
-          <span className="choice-label">{label}</span>
-          {sub && <span className="choice-sub">{sub}</span>}
+      {options.map(([v, label, sub, icon]) => (
+        <button key={v} className={`choice ${value === v ? 'on' : ''} ${icon ? 'with-icon' : ''}`} onClick={() => onPick(v)}>
+          {icon && <span className="choice-icon">{icon}</span>}
+          <span className="choice-text">
+            <span className="choice-label">{label}</span>
+            {sub && <span className="choice-sub">{sub}</span>}
+          </span>
         </button>
       ))}
     </div>
@@ -585,43 +694,81 @@ function Field({ label, help, error, children }: { label: string; help?: string;
   )
 }
 
-function usePreset(flags: Flags) {
+function versionLabel(flags: Flags) {
+  const preset = presetOf(flags)
+  if (preset === 'control') return 'Control (today)'
+  if (preset === 'proposed') return 'Proposed (all on)'
+  const changes = (Object.keys(FLAG_INFO) as FlagKey[]).filter((k) => k !== 'requirePhone')
+  const on = changes.filter((k) => flags[k]).length
+  return `Custom, ${on} of ${changes.length} changes on${flags.requirePhone ? '' : ', phone optional'}`
+}
+
+function presetOf(flags: Flags) {
   return JSON.stringify(flags) === JSON.stringify(CONTROL) ? 'control' : JSON.stringify(flags) === JSON.stringify(PROPOSED) ? 'proposed' : 'custom'
 }
 
-// Phones: a button in the header opens the flags.
-function FlagsPanel({ flags, onChange }: { flags: Flags; onChange: (f: Flags) => void }) {
+// The three-dot menu, as in Evolve's current flow.
+function Menu({ canEdit, onEdit, onRestart, onFlags }: { canEdit: boolean; onEdit: () => void; onRestart: () => void; onFlags: () => void }) {
   const [open, setOpen] = useState(false)
-  const preset = usePreset(flags)
+  const pick = (fn: () => void) => () => {
+    setOpen(false)
+    fn()
+  }
   return (
-    <div className="mobile-only">
-      <button className="flags-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
-        Flags · {preset === 'control' ? 'Control' : preset === 'proposed' ? 'Proposed' : 'Custom'}
+    <div className="menu">
+      <button className="kebab" aria-label="Menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span />
+        <span />
+        <span />
       </button>
       {open && (
-        <aside className="flags" aria-label="Feature flags">
-          <FlagsBody flags={flags} onChange={onChange} onClose={() => setOpen(false)} />
-        </aside>
+        <div className="menu-list" role="menu">
+          <button role="menuitem" disabled={!canEdit} onClick={pick(onEdit)}>
+            Edit answers
+          </button>
+          <button role="menuitem" onClick={pick(onRestart)}>
+            Start over
+          </button>
+          <button role="menuitem" className="mobile-only" onClick={pick(onFlags)}>
+            Feature flags
+          </button>
+        </div>
       )}
     </div>
   )
 }
 
-function FlagsBody({ flags, onChange, onClose }: { flags: Flags; onChange: (f: Flags) => void; onClose?: () => void }) {
+function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className="sheet" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{title}</strong>
+          <button className="link" onClick={onClose}>
+            Done
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function FlagsBody({ flags, onChange, onReset, bare }: { flags: Flags; onChange: (f: Flags) => void; onReset: () => void; bare?: boolean }) {
   const [events, setEvents] = useState<RfiEvent[]>([])
   useEffect(() => subscribe(setEvents), [])
-  const preset = usePreset(flags)
+  const preset = presetOf(flags)
   return (
     <>
+      {!bare && (
       <div className="flags-head">
         <strong>Feature flags</strong>
-        {onClose && (
-          <button className="link" onClick={onClose}>
-            Close
-          </button>
-        )}
+        <button className="link" onClick={onReset}>
+          Reset
+        </button>
       </div>
-      <p className="flags-intro">Each flag is one change from the test plan. Switching restarts the flow.</p>
+      )}
+      <p className="flags-intro">Each flag is one change from the test plan. Changes apply right where you are.</p>
       <div className="presets">
         <button className={`pill ${preset === 'control' ? 'on' : ''}`} onClick={() => onChange({ ...CONTROL })}>
           Control (today)
@@ -630,8 +777,13 @@ function FlagsBody({ flags, onChange, onClose }: { flags: Flags; onChange: (f: F
           Proposed (all on)
         </button>
       </div>
+      {bare && (
+        <button className="link reset-under" onClick={onReset}>
+          Reset
+        </button>
+      )}
       {(Object.keys(FLAG_INFO) as FlagKey[]).map((k) => (
-        <label key={k} className="flag">
+        <label key={k} className={`flag ${flags[k] ? '' : 'is-off'}`}>
           <input type="checkbox" checked={flags[k]} onChange={(e) => onChange({ ...flags, [k]: e.target.checked })} />
           <span>
             <span className="flag-label">
@@ -642,13 +794,27 @@ function FlagsBody({ flags, onChange, onClose }: { flags: Flags; onChange: (f: F
         </label>
       ))}
       <div className="events">
-        <strong>Event log</strong>
+        <div className="events-head">
+          <strong>Event log</strong>
+          <span>Latest first</span>
+        </div>
+        <p className="events-note">
+          Tracked the same way in every version, so each step's drop-off can be compared. In a live test, each owner is
+          assigned one version when they arrive.
+        </p>
+        <p className="assigned">
+          <code>assigned</code> {versionLabel(flags)}
+        </p>
         <ul>
-          {events.slice(-8).reverse().map((e, i) => (
-            <li key={i}>
-              <code>{e.name}</code> {e.step} {e.detail && <span>· {e.detail}</span>}
-            </li>
-          ))}
+          {events
+            .filter((e) => e.name !== 'flag_set')
+            .slice(-6)
+            .reverse()
+            .map((e, i) => (
+              <li key={i}>
+                <code>{e.name}</code> {e.step} {e.detail && <span>· {e.detail}</span>}
+              </li>
+            ))}
         </ul>
       </div>
     </>

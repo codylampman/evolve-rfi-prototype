@@ -2,7 +2,7 @@
 // instrument to measure drop-off per step and per field.
 
 export type RfiEvent = {
-  name: 'step_viewed' | 'step_completed' | 'step_back' | 'field_focus' | 'field_error' | 'rfi_submitted' | 'not_a_fit'
+  name: 'step_viewed' | 'step_completed' | 'step_back' | 'step_edit' | 'flag_set' | 'field_focus' | 'field_error' | 'rfi_submitted' | 'not_a_fit'
   step?: string
   detail?: string
   at: string
