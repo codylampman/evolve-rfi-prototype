@@ -20,7 +20,7 @@ On a computer, the prototype shows in a phone frame, with notes on the left and 
 
 I walked the live flow on my phone (single property, multiple properties, and the branches for owners who already rent, use a manager, or rent unfurnished).
 
-**First, a bug.** Tapping a past answer to edit it makes the screen flash to loading placeholders, the progress bar jumps backward, and the page scrolls on its own for a few seconds. I saw it every time on iPhone (Arc). It may be browser-specific, but it lands right before the contact step, so it's the first thing I'd check in session data.
+**First, a bug.** Tapping a past answer to edit it makes the screen flash to loading placeholders, the progress bar jumps backward, and the page scrolls on its own for a few seconds. After one edit, it happens again on every step that follows, all the way to the contact step. I saw it every time on iPhone in both Arc and Safari, so it's likely the form, not the browser. It's the first thing I'd check in session data: compare completion for owners who edited an answer with owners who didn't.
 
 **Contact step (35% drop-off).** The flow builds toward an answer and never gives one. An early step promises owners can earn up to 18% more, owners answer seven questions, the headline says "let's see if we're a fit," and then the reward is a request for their phone number and consent to calls and texts. Nothing says why the phone is needed or what happens next.
 
@@ -70,7 +70,7 @@ Today about one in three owners who start the RFI finish. If the two problem ste
 |---|---|---|---|
 | Address / ZIP | 30% drop | 20 to 25% | A ZIP is less personal than a home address, and the reason is stated |
 | New estimate screen | none | 5 to 12% drop | It adds a step and the street address moves here |
-| Contact | 35% drop | 25 to 32% | The phone ask is explained, next steps are clear, and the reward is visible |
+| Contact | 35% drop | 25 to 32% | The phone ask is explained, what happens next is clear, and the reward is visible |
 
 Combined, completion moves from about 33% to somewhere between flat and 42%, with my best guess around 38% (about 15% more completed RFIs). The wide range is honest: the estimate screen could cancel out the other gains, which is exactly why it's tested last and on its own.
 
@@ -81,8 +81,8 @@ Combined, completion moves from about 33% to somewhere between flat and 42%, wit
 - **Sample size:** at a 33% baseline, detecting a 10% relative lift takes about 3,200 owners per version (95% confidence, 80% power); a 20% lift takes about 820. If Evolve's monthly RFI starts can't support that, I'd combine the copy changes into one test or move the test higher in the funnel.
 
 **If a test doesn't win**
-- *Say why we ask:* try the reason as a short line above the field instead of below it.
-- *Contact rework:* test the pieces separately, starting with "what happens next," which I'd expect to carry most of the effect.
+- *Say why we ask:* move the reason into the question itself, where every owner reads it, instead of a helper line under the field.
+- *Contact rework:* test the pieces separately, starting with the line on what happens next, which I'd expect to carry most of the effect.
 - *Estimate:* try a market-level range without the street address, or show the estimate after contact as the reward for finishing.
 
 ## Assumptions (questions I sent; judgment calls until answered)
