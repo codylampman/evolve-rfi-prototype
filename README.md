@@ -4,12 +4,18 @@ A working redesign of Evolve's owner Request for Information flow, built to get 
 
 - **Live prototype:** https://codylampman.github.io/evolve-rfi-prototype/
 - **Video walkthrough:** VIDEO_URL
-- **Compare versions:** open the **Flags** button in the top right. "Control" recreates today's flow, "Proposed" turns every change on, and each flag switches one change on its own.
+- **Compare versions:** use the **Feature flags** panel (on the right on a computer, behind the Flags button on a phone). "Control" recreates today's flow, "Proposed" turns every change on, and each flag switches one change on its own.
   - Today's flow: `https://codylampman.github.io/evolve-rfi-prototype/?preset=control`
   - Proposed: `https://codylampman.github.io/evolve-rfi-prototype/`
   - One change at a time, e.g. `https://codylampman.github.io/evolve-rfi-prototype/?flags=backButton,whyCopy`
 
 Estimates in the prototype are demo numbers. Nothing is sent anywhere; events print to the console and the event log in the Flags panel.
+
+## Designed for the phone
+
+The brief notes that many owners open the RFI on a mobile device, and they arrive from search and social ads, which skew heavily to phones. The two steps that lose the most owners, address and contact, are also the two typing steps, and typing is hardest on a phone keyboard. So this is designed phone first.
+
+On a computer, the prototype shows in a phone frame, with notes on the left and the feature flags and event log on the right. For the real experience, open it on your phone (there's a QR code on the page).
 
 ## What I think is causing the drop-off
 

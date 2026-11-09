@@ -3,6 +3,7 @@ import { CONTROL, FLAG_INFO, PROPOSED, flagsFromUrl, flagsToUrl, type FlagKey, t
 import { BANNERS, EMPTY, OWNER_COPY, ownerType, stepsFor, type Answers, type StepId } from './flow'
 import { estimateRange, money } from './estimate'
 import { subscribe, track, type RfiEvent } from './events'
+import QRCode from 'qrcode'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const phoneDigits = (p: string) => p.replace(/\D/g, '')
@@ -14,9 +15,11 @@ export default function App() {
   const current = history[history.length - 1]
   const steps = useMemo(() => stepsFor(answers, flags), [answers, flags])
 
+  const phoneRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     track('step_viewed', current)
     window.scrollTo(0, 0)
+    phoneRef.current?.scrollTo(0, 0)
   }, [current])
 
   const update = (patch: Partial<Answers>) => setAnswers((a) => ({ ...a, ...patch }))
@@ -59,7 +62,9 @@ export default function App() {
 
   return (
     <div className="page">
-      <div className="phone">
+      <DesktopNotes />
+      <div className="device">
+      <div className="phone" ref={phoneRef}>
         <div className="progress" aria-hidden="true">
           <div className="progress-fill" style={{ width: `${Math.max(progress, 0.04) * 100}%` }} />
         </div>
@@ -71,6 +76,7 @@ export default function App() {
           ) : (
             <span className="wordmark">evolve</span>
           )}
+          {canGoBack && <span className="wordmark small desktop-only">evolve</span>}
           <FlagsPanel flags={flags} onChange={changeFlags} />
         </header>
         {banner && (
@@ -91,7 +97,47 @@ export default function App() {
         </main>
         <footer className="footnote">Prototype for an Evolve case study by Cody Lampman. Estimates are demo numbers.</footer>
       </div>
+      </div>
+      <aside className="side side-flags" aria-label="Feature flags">
+        <FlagsBody flags={flags} onChange={changeFlags} />
+      </aside>
     </div>
+  )
+}
+
+// Desktop only: why the prototype is a phone, and how to use it.
+function DesktopNotes() {
+  const [qr, setQr] = useState('')
+  useEffect(() => {
+    const url = window.location.origin + window.location.pathname
+    QRCode.toDataURL(url, { margin: 1, width: 240, color: { dark: '#34163d', light: '#ffffff' } }).then(setQr).catch(() => {})
+  }, [])
+  return (
+    <aside className="side side-notes">
+      <p className="eyebrow">Evolve owner RFI · case study</p>
+      <h2>Designed for the phone</h2>
+      <p>
+        Many owners open the RFI on a phone, arriving from search and social ads. The two steps that lose the most
+        owners, address and contact, are the typing steps, and typing is hardest on a phone keyboard. So this is
+        designed phone first and shown here in a phone frame.
+      </p>
+      {qr && (
+        <div className="qr">
+          <img src={qr} alt="QR code to open this prototype on your phone" width={120} height={120} />
+          <span>Best on your phone. Scan to open it there.</span>
+        </div>
+      )}
+      <h3>How to use it</h3>
+      <ul>
+        <li>Go through the flow as an owner would. Try answering that you already rent it out with a property manager.</li>
+        <li>
+          <strong>Control</strong> recreates today's flow. <strong>Proposed</strong> turns on every change.
+        </li>
+        <li>Each flag on the right is one change from the test plan, so you can see any change on its own.</li>
+        <li>The event log shows what I'd track for each step.</li>
+      </ul>
+      <p className="small">Estimates are demo numbers. Nothing you enter is sent anywhere.</p>
+    </aside>
   )
 }
 
@@ -539,56 +585,72 @@ function Field({ label, help, error, children }: { label: string; help?: string;
   )
 }
 
+function usePreset(flags: Flags) {
+  return JSON.stringify(flags) === JSON.stringify(CONTROL) ? 'control' : JSON.stringify(flags) === JSON.stringify(PROPOSED) ? 'proposed' : 'custom'
+}
+
+// Phones: a button in the header opens the flags.
 function FlagsPanel({ flags, onChange }: { flags: Flags; onChange: (f: Flags) => void }) {
   const [open, setOpen] = useState(false)
-  const [events, setEvents] = useState<RfiEvent[]>([])
-  useEffect(() => subscribe(setEvents), [])
-  const preset = JSON.stringify(flags) === JSON.stringify(CONTROL) ? 'control' : JSON.stringify(flags) === JSON.stringify(PROPOSED) ? 'proposed' : 'custom'
+  const preset = usePreset(flags)
   return (
-    <>
+    <div className="mobile-only">
       <button className="flags-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
         Flags · {preset === 'control' ? 'Control' : preset === 'proposed' ? 'Proposed' : 'Custom'}
       </button>
       {open && (
         <aside className="flags" aria-label="Feature flags">
-          <div className="flags-head">
-            <strong>Feature flags</strong>
-            <button className="link" onClick={() => setOpen(false)}>
-              Close
-            </button>
-          </div>
-          <p className="flags-intro">Each flag is one change from the test plan. Switching restarts the flow.</p>
-          <div className="presets">
-            <button className={`pill ${preset === 'control' ? 'on' : ''}`} onClick={() => onChange({ ...CONTROL })}>
-              Control (today)
-            </button>
-            <button className={`pill ${preset === 'proposed' ? 'on' : ''}`} onClick={() => onChange({ ...PROPOSED })}>
-              Proposed (all on)
-            </button>
-          </div>
-          {(Object.keys(FLAG_INFO) as FlagKey[]).map((k) => (
-            <label key={k} className="flag">
-              <input type="checkbox" checked={flags[k]} onChange={(e) => onChange({ ...flags, [k]: e.target.checked })} />
-              <span>
-                <span className="flag-label">
-                  {FLAG_INFO[k].label} <em>{FLAG_INFO[k].plan}</em>
-                </span>
-                <span className="flag-note">{FLAG_INFO[k].note}</span>
-              </span>
-            </label>
-          ))}
-          <div className="events">
-            <strong>Event log</strong>
-            <ul>
-              {events.slice(-8).reverse().map((e, i) => (
-                <li key={i}>
-                  <code>{e.name}</code> {e.step} {e.detail && <span>· {e.detail}</span>}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <FlagsBody flags={flags} onChange={onChange} onClose={() => setOpen(false)} />
         </aside>
       )}
+    </div>
+  )
+}
+
+function FlagsBody({ flags, onChange, onClose }: { flags: Flags; onChange: (f: Flags) => void; onClose?: () => void }) {
+  const [events, setEvents] = useState<RfiEvent[]>([])
+  useEffect(() => subscribe(setEvents), [])
+  const preset = usePreset(flags)
+  return (
+    <>
+      <div className="flags-head">
+        <strong>Feature flags</strong>
+        {onClose && (
+          <button className="link" onClick={onClose}>
+            Close
+          </button>
+        )}
+      </div>
+      <p className="flags-intro">Each flag is one change from the test plan. Switching restarts the flow.</p>
+      <div className="presets">
+        <button className={`pill ${preset === 'control' ? 'on' : ''}`} onClick={() => onChange({ ...CONTROL })}>
+          Control (today)
+        </button>
+        <button className={`pill ${preset === 'proposed' ? 'on' : ''}`} onClick={() => onChange({ ...PROPOSED })}>
+          Proposed (all on)
+        </button>
+      </div>
+      {(Object.keys(FLAG_INFO) as FlagKey[]).map((k) => (
+        <label key={k} className="flag">
+          <input type="checkbox" checked={flags[k]} onChange={(e) => onChange({ ...flags, [k]: e.target.checked })} />
+          <span>
+            <span className="flag-label">
+              {FLAG_INFO[k].label} <em>{FLAG_INFO[k].plan}</em>
+            </span>
+            <span className="flag-note">{FLAG_INFO[k].note}</span>
+          </span>
+        </label>
+      ))}
+      <div className="events">
+        <strong>Event log</strong>
+        <ul>
+          {events.slice(-8).reverse().map((e, i) => (
+            <li key={i}>
+              <code>{e.name}</code> {e.step} {e.detail && <span>· {e.detail}</span>}
+            </li>
+          ))}
+        </ul>
+      </div>
     </>
   )
 }
