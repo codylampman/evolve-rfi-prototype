@@ -20,12 +20,12 @@ export const FLAG_INFO: Record<FlagKey, { label: string; plan: string; note: str
   whyCopy: {
     label: 'Say why we ask',
     plan: 'Test 1',
-    note: "Uses Evolve's own reasons for the address and phone fields.",
+    note: "Uses Evolve's own reason on the address step.",
   },
   contactRework: {
     label: 'Contact step rework',
     plan: 'Test 2',
-    note: 'What happens next, shown before the fields; one full-name field; a plain button.',
+    note: 'One line on what happens next, above the fields; one full-name field; a plain button.',
   },
   estimateScreen: {
     label: 'ZIP first + earnings estimate',

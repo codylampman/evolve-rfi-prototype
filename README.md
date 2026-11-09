@@ -3,7 +3,6 @@
 A working redesign of Evolve's owner Request for Information flow, built to get more qualified owners through it without lowering lead quality. Built by Cody Lampman for the Senior Product Designer, Growth case study.
 
 - **Live prototype:** https://codylampman.github.io/evolve-rfi-prototype/
-- **Video walkthrough:** VIDEO_URL
 - **Compare versions:** use the **Feature flags** panel (on the right on a computer; on a phone, tap the ⋮ menu, then Feature flags). "Control" recreates today's flow, "Proposed" turns every change on, and each flag switches one change on its own.
   - Today's flow: `https://codylampman.github.io/evolve-rfi-prototype/?preset=control`
   - Proposed: `https://codylampman.github.io/evolve-rfi-prototype/`
@@ -36,8 +35,8 @@ What's already working, and kept: every step carries a reason to trust Evolve, t
 | Flag | Change | Plan |
 |---|---|---|
 | `backButton` | Visible back button instead of the hidden swipe-down; progress never jumps backward | Just do it |
-| `whyCopy` | Say why we ask, using Evolve's own reasons, on the address and contact fields | Test 1 |
-| `contactRework` | A short "what happens next" above the fields, one full-name field, and a plain button ("Connect with our team") | Test 2 |
+| `whyCopy` | Say why we ask for the address, using Evolve's own reason | Test 1 |
+| `contactRework` | One line on what happens next ("Someone from our team will follow up…") above the fields, one full-name field, and a plain button ("Connect with our team") | Test 2 |
 | `estimateScreen` | Ask for ZIP early, then show an honest earnings range before contact, and collect the street address there ("for a sharper estimate") | Test 3 |
 | `requirePhone` | Phone required (default). An open question for sales | Config |
 
@@ -82,7 +81,7 @@ Combined, completion moves from about 33% to somewhere between flat and 42%, wit
 - **Sample size:** at a 33% baseline, detecting a 10% relative lift takes about 3,200 owners per version (95% confidence, 80% power); a 20% lift takes about 820. If Evolve's monthly RFI starts can't support that, I'd combine the copy changes into one test or move the test higher in the funnel.
 
 **If a test doesn't win**
-- *Say why we ask:* try the reason as a short line above the field instead of below it, or test only the phone line.
+- *Say why we ask:* try the reason as a short line above the field instead of below it.
 - *Contact rework:* test the pieces separately, starting with "what happens next," which I'd expect to carry most of the effect.
 - *Estimate:* try a market-level range without the street address, or show the estimate after contact as the reward for finishing.
 

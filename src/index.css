@@ -328,10 +328,7 @@ button { color: var(--ink); }
 .phone-row .country span { font-size: 16px; transform: translateY(-3px); }
 .phone-row input { flex: 1; min-width: 0; border-radius: 0 12px 12px 0 !important; }
 .phone > * { flex-shrink: 0; }
-.steps-inline { list-style: none; counter-reset: step; padding: 0; margin: -6px 0 22px; display: flex; flex-direction: column; gap: 10px; }
-.steps-inline li { counter-increment: step; display: flex; gap: 12px; align-items: baseline; font-size: 15px; line-height: 1.45; color: var(--muted); font-weight: 400; }
-.steps-inline li::before { content: counter(step); flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--mint); color: var(--mint-ink); font-weight: 600; font-size: 12px; display: grid; place-items: center; transform: translateY(1px); }
-.steps-inline strong { color: var(--ink); font-weight: 700; }
+.subtext { margin: -6px 0 22px; font-size: 15px; line-height: 1.45; color: var(--muted); font-weight: 400; }
 .estimate-edit { align-self: flex-start; padding: 6px 0 0; font-size: 14px; }
 .device-col > .footnote { padding: 14px 0 0; max-width: 360px; }
 .sheet-foot { margin: 14px 0 0; }

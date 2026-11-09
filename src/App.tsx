@@ -568,7 +568,6 @@ function ContactControl({ a, flags, next }: Pick<StepProps, 'a' | 'flags' | 'nex
       <Field
         label={flags.requirePhone ? 'Phone' : 'Phone (optional)'}
         error={errors.phone}
-        help={flags.whyCopy ? 'So our team can follow up about your home.' : undefined}
       >
         <span className="phone-row">
           <span className="country" aria-label="Country code: United States, plus 1">
@@ -610,10 +609,7 @@ function ContactReworked({ a, flags, next }: Pick<StepProps, 'a' | 'flags' | 'ne
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value })
   return (
     <Question big title="Last step: how can we reach you?">
-      <ol className="steps-inline" aria-label="What happens next">
-        <li>Our team follows up to answer your questions about your home.</li>
-        <li>You decide, with no long-term contract.</li>
-      </ol>
+      <p className="subtext">Someone from our team will follow up to answer your questions about your home.</p>
       <Field label="Full name" error={errors.name}>
         <input value={f.name} onChange={set('name')} autoComplete="name" onFocus={() => track('field_focus', 'contact', 'name')} />
       </Field>
@@ -623,7 +619,6 @@ function ContactReworked({ a, flags, next }: Pick<StepProps, 'a' | 'flags' | 'ne
       <Field
         label={flags.requirePhone ? 'Phone' : 'Phone (optional)'}
         error={errors.phone}
-        help={flags.whyCopy ? 'So our team can follow up about your home.' : undefined}
       >
         <span className="phone-row">
           <span className="country" aria-label="Country code: United States, plus 1">
