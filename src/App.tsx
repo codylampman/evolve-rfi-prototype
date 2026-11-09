@@ -608,8 +608,7 @@ function ContactReworked({ a, flags, next }: Pick<StepProps, 'a' | 'flags' | 'ne
   return (
     <Question big title="Last step: how can we reach you?">
       <ol className="steps-inline" aria-label="What happens next">
-        <li>You share how to reach you.</li>
-        <li>Our team follows up.</li>
+        <li>Our team follows up to answer your questions about your home.</li>
         <li>You decide, with no long-term contract.</li>
       </ol>
       <Field label="Full name" error={errors.name}>
