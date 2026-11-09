@@ -4,7 +4,7 @@ A working redesign of Evolve's owner Request for Information flow, built to get 
 
 - **Live prototype:** https://codylampman.github.io/evolve-rfi-prototype/
 - **Video walkthrough:** VIDEO_URL
-- **Compare versions:** use the **Feature flags** panel (on the right on a computer, behind the Flags button on a phone). "Control" recreates today's flow, "Proposed" turns every change on, and each flag switches one change on its own.
+- **Compare versions:** use the **Feature flags** panel (on the right on a computer; on a phone, tap the ⋮ menu, then Feature flags). "Control" recreates today's flow, "Proposed" turns every change on, and each flag switches one change on its own.
   - Today's flow: `https://codylampman.github.io/evolve-rfi-prototype/?preset=control`
   - Proposed: `https://codylampman.github.io/evolve-rfi-prototype/`
   - One change at a time, e.g. `https://codylampman.github.io/evolve-rfi-prototype/?flags=backButton,whyCopy`

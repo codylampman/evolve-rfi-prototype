@@ -225,7 +225,10 @@ function DesktopNotes() {
       {qr && (
         <div className="qr">
           <img src={qr} alt="QR code to open this prototype on your phone" width={120} height={120} />
-          <span>Best on your phone. Scan to open it.</span>
+          <span>
+            Best on your phone. Scan to open it.
+            <small>On a phone, the flags are in the ⋮ menu.</small>
+          </span>
         </div>
       )}
       <h3>How to use it</h3>

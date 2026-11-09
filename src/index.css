@@ -336,3 +336,4 @@ button { color: var(--ink); }
 .device-col > .footnote { padding: 14px 0 0; max-width: 360px; }
 .sheet-foot { margin: 14px 0 0; }
 @media (min-width: 1140px) { .device-col { width: 390px; max-width: none; flex-shrink: 0; } .device { width: 390px; } }
+.qr small { display: block; margin-top: 6px; font-weight: 400; color: var(--muted); font-size: 12.5px; }
