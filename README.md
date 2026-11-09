@@ -2,12 +2,12 @@
 
 A working redesign of Evolve's owner Request for Information flow, built to get more qualified owners through it without lowering lead quality. Built by Cody Lampman for the Senior Product Designer, Growth case study.
 
-- **Live prototype:** LIVE_URL
+- **Live prototype:** https://codylampman.github.io/evolve-rfi-prototype/
 - **Video walkthrough:** VIDEO_URL
 - **Compare versions:** open the **Flags** button in the top right. "Control" recreates today's flow, "Proposed" turns every change on, and each flag switches one change on its own.
-  - Today's flow: `LIVE_URL?preset=control`
-  - Proposed: `LIVE_URL`
-  - One change at a time, e.g. `LIVE_URL?flags=backButton,whyCopy`
+  - Today's flow: `https://codylampman.github.io/evolve-rfi-prototype/?preset=control`
+  - Proposed: `https://codylampman.github.io/evolve-rfi-prototype/`
+  - One change at a time, e.g. `https://codylampman.github.io/evolve-rfi-prototype/?flags=backButton,whyCopy`
 
 Estimates in the prototype are demo numbers. Nothing is sent anywhere; events print to the console and the event log in the Flags panel.
 
